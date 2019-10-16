@@ -18,6 +18,10 @@ rare_flaws = [67, 75, 77, 80]
 commom_flaws = [61, 62, 63, 64, 71, 72, 73]
 lack_img_flaws = [65, 66, 68, 69, 70, 74, 76, 78, 79, 81]
 sep = os.sep
+data_path = r'D:\dataset2018-05-23'
+data_type = 'train'
+resized_width = 2000
+splited_width = 1200
 
 def get(root, name):
     vars = root.findall(name)
@@ -57,15 +61,24 @@ def iou(a, b):
 	return float(area_i) / float(area_u + 1e-6)
 
 def divide_raw_imgs_into_train_and_val():
-    data_path = r'D:\dataset2018-05-23\raw_img_after_classify'
-    train_raw_data_path = r'D:\dataset2018-05-23\train_raw_imgs'
-    val_raw_data_path = r'D:\dataset2018-05-23\val_raw_imgs'
+    '''
+    data_path
+        61
+            img / xml
+        62
+        63
+        ...
+    '''
+    data_input_path = os.path.join(data_path, 'raw_img_after_classify')
+    train_raw_data_path = os.path.join(data_path, 'train_raw_imgs')
+    val_raw_data_path = os.path.join(data_path, 'val_raw_imgs')
     if not os.path.exists(train_raw_data_path):
         os.makedirs(train_raw_data_path)
     if not os.path.exists(val_raw_data_path):
         os.makedirs(val_raw_data_path)
+        
     for j in commom_flaws:
-        path = os.path.join(data_path, str(j))
+        path = os.path.join(data_input_path, str(j))
         imgs = [s for s in os.listdir(path) if s[-4:]=='.jpg']
         xmls = [s for s in os.listdir(path) if s[-4:]=='.xml']
         assert len(imgs) == len(xmls)
@@ -109,9 +122,18 @@ def divide_raw_imgs_into_train_and_val():
                     break;
 
 def resize_raw_imgs():
-    new_W = 2000
-    data_input_path = r'D:\dataset2018-05-23\val_raw_imgs'
-    data_output_path = r'D:\dataset2018-05-23\val_resized_2000_imgs'
+    '''
+    new_W 
+        图片进行缩小后的宽度，高度同比缩小
+    data_input_path
+        imgs & xmls
+    data_output_path
+        imgs & xmls
+    '''
+    print('begin resize raw imgs')
+    new_W = resized_width
+    data_input_path = os.path.join(data_path, data_type+'_raw_imgs')
+    data_output_path = os.path.join(data_path, data_type+'_resized_2000_imgs')
     if not os.path.exists(data_output_path):
         os.makedirs(data_output_path)
         
@@ -184,23 +206,36 @@ def resize_raw_imgs():
             cv2.putText(resized_img, textLabel, textOrg, cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 1)
         '''
         Image.fromarray(resized_img).save(data_output_path+sep+imgs[i])
+    print('resize raw imgs end')
 
 def split_resized_img():
-    data_path = r'D:\dataset2018-05-23\train_resized_imgs'
-    data_output_path = r'D:\dataset2018-05-23\trian_spilted_1200_imgs'
+    '''
+    data_intput_path
+        imgs & xmls
+    imgs_output_path
+        imgs
+    xmls_output_path
+        xmls
+    '''
+    print('begin split resized imgs')
+    data_intput_path = os.path.join(data_path, data_type+'_resized_2000_imgs')
+    imgs_output_path = os.path.join(data_path, data_type+'_splited_1200_imgs')
+    xmls_output_path = os.path.join(data_path, data_type+'_splited_1200_xmls')
     W_pieces = 2
     H_pieces = 10
-    new_size = 1200 
-    if not os.path.exists(data_output_path):
-        os.makedirs(data_output_path)
-    imgs = [s for s in os.listdir(data_path) if s[-4:]=='.jpg']
-    xmls = [s for s in os.listdir(data_path) if s[-4:]=='.xml']
+    new_size = splited_width 
+    if not os.path.exists(imgs_output_path):
+        os.makedirs(imgs_output_path)
+    if not os.path.exists(xmls_output_path):
+        os.makedirs(xmls_output_path)
+    imgs = [s for s in os.listdir(data_intput_path) if s[-4:]=='.jpg']
+    xmls = [s for s in os.listdir(data_intput_path) if s[-4:]=='.xml']
     assert len(imgs) == len(xmls)
     print(len(imgs))
     for i in range(len(imgs)):
         assert imgs[i][:-4] == xmls[i][:-4]
-        img_path = os.path.join(data_path, imgs[i])
-        xml_path = os.path.join(data_path, xmls[i])
+        img_path = os.path.join(data_intput_path, imgs[i])
+        xml_path = os.path.join(data_intput_path, xmls[i])
         tree = ET.parse(xml_path)
         root = tree.getroot()
         size = get_and_check(root, 'size', 1)
@@ -271,9 +306,9 @@ def split_resized_img():
         for i in range(len(all_splited_imgs)):
             img_detail = all_splited_imgs[i]
             splited_img_data = img_detail['img_data']
-            create_xml(img_detail, data_output_path)
+            create_xml(img_detail, xmls_output_path)
             '''
-            xml_path = os.path.join(data_output_path, img_detail['filename']+'.xml')
+            xml_path = os.path.join(xmls_output_path, img_detail['filename']+'.xml')
             tree = ET.parse(xml_path)
             root = tree.getroot()
             for obj in get(root, 'object'):
@@ -292,20 +327,33 @@ def split_resized_img():
                 textOrg = (xmin, ymin)
                 cv2.putText(splited_img_data, textLabel, textOrg, cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 1)
             '''
-            Image.fromarray(splited_img_data).save(data_output_path+sep+img_detail['filename']+'.jpg')
-
+            Image.fromarray(splited_img_data).save(imgs_output_path+sep+img_detail['filename']+'.jpg')
+    print('split resized imgs end')
 # 检测框的ID起始值
 START_BOUNDING_BOX_ID = 1
 # 类别列表无必要预先创建，程序中会根据所有图像中包含的ID来创建并更新
 PRE_DEFINE_CATEGORIES = {}
-def convert_xml_2_coco(xml_dir, json_file):
+def convert_xml_2_coco():
     '''
-    :param xml_list: 需要转换的XML文件列表
-    :param xml_dir: XML的存储文件夹
-    :param json_file: 导出json文件的路径
-    :return: None
+    xml_dir
+        xmls
+    img_dir
+        imgs
+    json_file
+        output json file name
     '''
-    xml_list = [s for s in os.listdir(xml_dir) if s[-4:]=='.xml']
+    print('begin convert xml to coco')
+    xml_dir = os.path.join(data_path, data_type+'_splited_1200_xmls')
+    img_dir = os.path.join(data_path, data_type+'_splited_1200_imgs')
+    print(xml_dir)
+    print(img_dir)
+    json_file = os.path.join(data_path, 'train_1200.json')
+    xml_list = os.listdir(xml_dir)
+    print(len(xml_list))
+    img_list = os.listdir(img_dir)
+    print(len(img_list))
+    assert len(xml_list) == len(img_list)
+    
     # 标注基本结构
     json_dict = {"images":[],
                  "type": "instances",
@@ -315,10 +363,10 @@ def convert_xml_2_coco(xml_dir, json_file):
     bnd_id = START_BOUNDING_BOX_ID
     for line in xml_list:
         line = line.strip()
-        print("Processing {}".format(line))
+        #print("Processing {}".format(line))
         # 解析XML
         xml_f = os.path.join(xml_dir, line)
-        print(xml_f)
+        #print(xml_f)
         tree = ET.parse(xml_f)
         root = tree.getroot()
         path = get(root, 'path')
@@ -331,12 +379,12 @@ def convert_xml_2_coco(xml_dir, json_file):
             raise NotImplementedError('%d paths found in %s'%(len(path), line))
         ## The filename must be a number
         #image_id = get_filename_as_int(filename)  # 图片ID
-        image_id = filename[:-4]
+        image_id = filename
         size = get_and_check(root, 'size', 1)
         # 图片的基本信息
         width = int(get_and_check(size, 'width', 1).text)
         height = int(get_and_check(size, 'height', 1).text)
-        image = {'file_name': filename,
+        image = {'file_name': filename+'.jpg',
                  'height': height,
                  'width': width,
                  'id':image_id}
@@ -389,11 +437,13 @@ def convert_xml_2_coco(xml_dir, json_file):
     json_str = json.dumps(json_dict,indent=1)
     json_fp.write(json_str)
     json_fp.close()
-        
+    print('convert xml to coco end')  
 
 if __name__=="__main__":
+    #divide_raw_imgs_into_train_and_val
     #resize_raw_imgs()
-    split_resized_img()
+    #split_resized_img()
+    convert_xml_2_coco()
     
     
     

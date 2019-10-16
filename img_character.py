@@ -6,6 +6,9 @@ Created on Fri Oct 11 15:50:19 2019
 """
 import os
 import random
+import shutil
+
+'''
 xml_dir = r'D:\dataset2018\raw_img' 
 img_dir = r'D:\dataset2018\raw_img'
 
@@ -31,7 +34,7 @@ print("lack img flaws")
 for i in lack_img_flaws:
     path = os.path.join(xml_dir, str(i))
     print(str(i) + " " + str(len(os.listdir(path))))
-
+'''
 """
 ##Mean && Std
 from PIL import Image
@@ -65,3 +68,10 @@ for flaw_number in commom_flaws:
 print(img_mean/len(commom_flaws))
 print(img_std/len(commom_flaws))
 """
+xml_dir = r'D:\dataset2018-05-23\trian_spilted_1200_imgs'
+
+xml_list = [s for s in os.listdir(xml_dir) if s[-4:]=='.xml']
+for xml_file in xml_list:
+    os.remove(os.path.join(xml_dir, xml_file))
+#    shutil.copy(os.path.join(xml_dir, xml_file),
+#            os.path.join(new_xml_dir, xml_file))
